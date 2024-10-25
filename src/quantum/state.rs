@@ -17,7 +17,7 @@ impl State {
 
     fn add_or_insert(ket_set: &mut HashSet<Ket>, ket: &Ket) {
         if let Some(mut found_ket) = ket_set.take(&ket) {
-            found_ket.amp += ket.amp;
+            found_ket.amplitude += ket.amplitude;
         }
         if ket_set.contains(ket) {}
     }
