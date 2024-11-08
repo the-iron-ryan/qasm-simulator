@@ -1,10 +1,11 @@
 use num::complex::Complex;
+use ordered_float::OrderedFloat;
+use std::hash::{Hash, Hasher};
 
 /// A struct that contains data for a binary ket vector
-#[derive(Debug, Hash, Eq, PartialEq)]
+#[derive(Debug)]
 pub struct Ket {
-    pub amplitude: Complex<i64>,
-    pub num_qubits: usize,
+    pub amplitude: Complex<f64>,
     bits: Box<[bool]>,
 }
 
@@ -24,33 +25,127 @@ impl Ket {
     ///
     /// ```
     /// use num::complex::Complex;
-    /// use crate::quantum::ket::Ket;
+    /// use quantum_simulator::quantum::ket::Ket;
     ///
-    /// let ket = Ket::new(3, Complex<i64>::new(1,0), [false, true, false]);
-    /// assert_eq!(ket.amplitude, Complex<i64>::new(1,0));
+    /// let bit_arr = [false, true, false];
+    /// let ket = Ket::new(Box::new(bit_arr), Complex::new(1.0, 0.0));
+    /// assert_eq!(ket.num_qubits(), 3);
+    /// assert_eq!(ket.amplitude, Complex::new(1.0, 0.0));
+    /// assert_eq!(**ket.bits(), bit_arr);
     /// ```
-    fn new<T: Into<usize>>(num_qubits: T, amplitude: Complex<i64>, ket_bits: Box<[bool]>) -> Ket {
-        let num_qubits_size = num_qubits.into();
+    pub fn new(ket_bits: Box<[bool]>, amplitude: Complex<f64>) -> Ket {
+        assert!(ket_bits.len() > 0);
         Ket {
             amplitude,
-            num_qubits: num_qubits_size,
             bits: ket_bits,
         }
     }
-    fn new_zero_ket<T: Into<usize>>(num_qubits: T) -> Ket {
-        let num_qubits_size = num_qubits.into();
+    /// Creates a new `Ket` of size `num_qubits` with all bits set to 0 and
+    /// an amplitude of 1.0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use num::complex::Complex;
+    /// use quantum_simulator::quantum::ket::Ket;
+    ///
+    /// let ket = Ket::new_zero_ket(10);
+    /// let expected_bit_arr = [false; 10];
+    /// assert_eq!(ket.num_qubits(), 10);
+    /// assert_eq!(ket.amplitude, Complex::new(1.0, 0.0));
+    /// assert_eq!(**ket.bits(), expected_bit_arr)
+    /// ```
+    pub fn new_zero_ket(num_qubits: usize) -> Ket {
+        assert!(num_qubits > 0);
         Ket {
-            amplitude: Complex::new(0, 0),
-            num_qubits: num_qubits_size,
-            bits: ket_arr!(num_qubits_size),
+            amplitude: Complex::new(1.0, 0.0),
+            bits: ket_arr!(num_qubits),
         }
     }
 
-    fn flip(&mut self, index: usize) {
-        self.bits[index] = !self.bits[index];
+    /// Get the number of qubits in the ket
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use num::complex::Complex;
+    /// use quantum_simulator::quantum::ket::Ket;
+    ///
+    /// let ket = Ket::new_zero_ket(10);
+    ///
+    /// assert_eq!(ket.num_qubits(), 10);
+    ///
+    /// ```
+    pub fn num_qubits(&self) -> usize {
+        self.bits.len()
     }
 
-    fn get(&self, index: usize) -> bool {
+    /// Get a borrowed immutable reference to the ket bitvector
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use num::complex::Complex;
+    /// use quantum_simulator::quantum::ket::Ket;
+    ///
+    ///
+    /// let bit_arr = [false, true, false];
+    /// let ket = Ket::new(Box::new(bit_arr), Complex::new(1.0,1.0));
+    ///
+    /// assert_eq!(**ket.bits(), bit_arr)
+    ///
+    /// ```
+    pub fn bits(&self) -> &Box<[bool]> {
+        &self.bits
+    }
+
+    /// Gets a bit at the desired index.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use num::complex::Complex;
+    /// use quantum_simulator::quantum::ket::Ket;
+    ///
+    /// let mut ket = Ket::new_zero_ket(3);
+    ///
+    /// ket.flip(0);
+    /// assert_eq!(ket.get(0), true);
+    /// ```
+    pub fn get(&self, index: usize) -> bool {
         self.bits[index]
     }
+
+    /// Flips a bit at the desired index.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use num::complex::Complex;
+    /// use quantum_simulator::quantum::ket::Ket;
+    ///
+    /// let mut ket = Ket::new_zero_ket(1);
+    ///
+    /// assert_eq!(ket.get(0), false);
+    /// ```
+    ///
+    pub fn flip(&mut self, index: usize) {
+        self.bits[index] = !self.bits[index];
+    }
 }
+
+impl PartialEq for Ket {
+    fn eq(&self, other: &Self) -> bool {
+        *self.bits == *other.bits
+    }
+}
+
+impl Eq for Ket {}
+
+impl Hash for Ket {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        (*self.bits).hash(state);
+    }
+}
+
+mod tests {}
