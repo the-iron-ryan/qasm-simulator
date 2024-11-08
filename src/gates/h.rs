@@ -1,5 +1,6 @@
 use crate::gates::gate::Gate;
 use crate::gates::gate::GateData;
+use crate::quantum::state::State;
 
 pub struct H {
     data: GateData,
@@ -16,7 +17,7 @@ impl H {
 }
 
 impl Gate for H {
-    fn apply(&self) {
+    fn apply(&self, state: &mut State) {
         println!("Applying H gate");
     }
 }
