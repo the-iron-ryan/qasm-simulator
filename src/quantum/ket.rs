@@ -1,5 +1,4 @@
 use num::complex::Complex;
-use ordered_float::OrderedFloat;
 use std::hash::{Hash, Hasher};
 
 /// A struct that contains data for a binary ket vector
