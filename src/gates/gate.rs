@@ -20,3 +20,11 @@ pub trait Gate {
     /// Apply the gate to the state
     fn apply(&self, state: &mut State);
 }
+
+pub enum Gates {
+    H(q),
+    X(q),
+    T(q),
+    TDgr(q),
+    CX(c, t),
+}
