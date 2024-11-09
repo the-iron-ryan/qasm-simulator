@@ -1,4 +1,4 @@
-use crate::{ket_arr, quantum::ket::Ket};
+use crate::{gates::gate::Gate, gates::gate::GateType, ket_arr, quantum::ket::Ket};
 use num::complex::Complex;
 use std::collections::HashSet;
 
@@ -95,6 +95,10 @@ impl State {
     /// Removes all `Ket`s with zero amplitude from this state.
     fn remove_zero_amplitude_kets(&mut self) {
         self.kets.retain(|ket| ket.amplitude.norm() > 0.0);
+    }
+
+    fn apply_gate(&mut self, gate: &GateType) {
+        gate.apply(self);
     }
 }
 
