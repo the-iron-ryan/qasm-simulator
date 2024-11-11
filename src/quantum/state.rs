@@ -31,7 +31,7 @@ impl State {
             };
         } else {
             return Self {
-                kets: HashSet::from_iter(vec![Ket::new_zero_ket(num_qubits)]),
+                kets: HashSet::from_iter(vec![Ket::new_zero_ket()]),
                 num_qubits,
             };
         }

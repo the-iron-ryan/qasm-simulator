@@ -1,11 +1,11 @@
+use bitvec::prelude::*;
 use num::complex::Complex;
 use std::hash::{Hash, Hasher};
 
-/// A struct that contains data for a binary ket vector
 #[derive(Debug)]
 pub struct Ket {
     pub amplitude: Complex<f64>,
-    bits: Box<[bool]>,
+    bits: BitVec<u8>,
 }
 
 /// Helper macro used to construct boxed up data of ket data
@@ -26,19 +26,32 @@ impl Ket {
     /// use num::complex::Complex;
     /// use quantum_simulator::quantum::ket::Ket;
     ///
-    /// let bit_arr = [false, true, false];
-    /// let ket = Ket::new(Box::new(bit_arr), Complex::new(1.0, 0.0));
-    /// assert_eq!(ket.num_qubits(), 3);
+    /// let ket_bits = 0b0000_0100;
+    /// let ket = Ket::new(ket_bits, Complex::new(1.0, 0.0));
     /// assert_eq!(ket.amplitude, Complex::new(1.0, 0.0));
-    /// assert_eq!(**ket.bits(), bit_arr);
+    /// assert_eq!(ket.bits, ket_bits);
     /// ```
-    pub fn new(ket_bits: Box<[bool]>, amplitude: Complex<f64>) -> Ket {
-        assert!(ket_bits.len() > 0);
+    pub fn new(ket_bits: u8, amplitude: Complex<f64>) -> Ket {
+        Ket {
+            amplitude,
+            bits: BitVec::from_element(ket_bits),
+        }
+    }
+
+    pub fn from_bit_vec(ket_bits: BitVec<u8>, amplitude: Complex<f64>) -> Ket {
         Ket {
             amplitude,
             bits: ket_bits,
         }
     }
+
+    pub fn from_bit_slice(ket_bits: &BitSlice<u8>, amplitude: Complex<f64>) -> Ket {
+        Ket {
+            amplitude,
+            bits: BitVec::from_bitslice(ket_bits),
+        }
+    }
+
     /// Creates a new `Ket` of size `num_qubits` with all bits set to 0 and
     /// an amplitude of 1.0.
     ///
@@ -54,32 +67,14 @@ impl Ket {
     /// assert_eq!(ket.amplitude, Complex::new(1.0, 0.0));
     /// assert_eq!(**ket.bits(), expected_bit_arr)
     /// ```
-    pub fn new_zero_ket(num_qubits: usize) -> Ket {
-        assert!(num_qubits > 0);
+    pub fn new_zero_ket() -> Ket {
         Ket {
             amplitude: Complex::new(1.0, 0.0),
-            bits: ket_arr!(num_qubits),
+            bits: BitVec::from_element(0b0000_0000),
         }
     }
 
-    /// Get the number of qubits in the ket
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use num::complex::Complex;
-    /// use quantum_simulator::quantum::ket::Ket;
-    ///
-    /// let ket = Ket::new_zero_ket(10);
-    ///
-    /// assert_eq!(ket.num_qubits(), 10);
-    ///
-    /// ```
-    pub fn num_qubits(&self) -> usize {
-        self.bits.len()
-    }
-
-    /// Get a borrowed immutable reference to the ket bitvector
+    /// Get an immutable bitvector reference to the underlying bits
     ///
     /// # Examples
     ///
@@ -88,13 +83,14 @@ impl Ket {
     /// use quantum_simulator::quantum::ket::Ket;
     ///
     ///
-    /// let bit_arr = [false, true, false];
-    /// let ket = Ket::new(Box::new(bit_arr), Complex::new(1.0,1.0));
+    /// let ket = Ket::new(0b0000_0100, Complex::new(1.0, 0.0));
+    /// let bit_vec = ket.bit_vec();
     ///
-    /// assert_eq!(**ket.bits(), bit_arr)
+    ///
+    /// assert_eq!(bit_vec.value(), 0b0000_0100);
     ///
     /// ```
-    pub fn bits(&self) -> &Box<[bool]> {
+    pub fn bit_vec(&self) -> &BitVec<u8> {
         &self.bits
     }
 
@@ -112,7 +108,14 @@ impl Ket {
     /// assert_eq!(ket.get(0), true);
     /// ```
     pub fn get(&self, index: usize) -> bool {
-        self.bits[index]
+        if let Some(bit) = self.bits.get(index) {
+            return *bit;
+        } else {
+            panic!(
+                "Index out of bounds. Needs to be less than {}",
+                self.bits.len()
+            );
+        }
     }
 
     /// Flips a bit at the desired index.
@@ -129,7 +132,8 @@ impl Ket {
     /// ```
     ///
     pub fn flip(&mut self, index: usize) {
-        self.bits[index] = !self.bits[index];
+        let cur_val = self.get(index);
+        self.bits.set(index, !cur_val);
     }
 }
 

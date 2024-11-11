@@ -5,4 +5,4 @@ edition = "2021"
 
 [dependencies]
 num = "0.4"
-ordered-float = "4.0"
+bitvec = "1.0"
