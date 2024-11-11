@@ -8,11 +8,11 @@ pub struct Ket {
     bits: BitVec<u8>,
 }
 
-/// Helper macro used to construct boxed up data of ket data
+/// Helper macro used to construct bit data for a `Ket`
 #[macro_export]
-macro_rules! ket_arr {
+macro_rules! ket_bit_vec {
     ($x:expr ) => {
-        vec![false; $x].into_boxed_slice()
+        bitvec![u8, Lsb0; $x]
     };
 }
 

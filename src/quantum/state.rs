@@ -1,4 +1,5 @@
-use crate::{gates::gate::Gate, gates::gate::GateType, ket_arr, quantum::ket::Ket};
+use crate::{gates::gate::Gate, gates::gate::GateType, ket_bit_vec, quantum::ket::Ket};
+use bitvec::prelude::*;
 use num::complex::Complex;
 use std::collections::HashSet;
 
@@ -111,6 +112,7 @@ impl PartialEq for State {
 }
 
 mod tests {
+
     use super::*;
 
     #[test]
@@ -124,11 +126,11 @@ mod tests {
     /// Tests to add a basic Ket to the state.
     #[test]
     fn test_add_or_insert_basic() {
-        let ket = Ket::new(ket_arr![1], Complex::new(0.5, 0.0));
+        let ket = Ket::from_bit_vec(ket_bit_vec![0], Complex::new(0.5, 0.0));
         let mut state = State::new(1);
         state.add_or_insert(ket);
 
-        let expected_ket = &Ket::new(ket_arr!(1), Complex::new(1.5, 0.0));
+        let expected_ket = &Ket::from_bit_vec(ket_bit_vec![0], Complex::new(1.5, 0.0));
         assert!(state.kets.contains(&expected_ket));
         if let Some(found_ket) = state.kets.take(expected_ket) {
             assert_eq!(found_ket.amplitude, expected_ket.amplitude);
@@ -140,8 +142,8 @@ mod tests {
     /// Tests that a zero amplitude Ket is not added to the state.
     #[test]
     fn test_add_or_insert_zero_amplitude() {
-        let bit_arr = [false, true, false];
-        let ket = Ket::new(Box::new(bit_arr), Complex::new(0.0, 0.0));
+        let bit_vec = bitvec![u8, Lsb0; 0,1,0];
+        let ket = Ket::from_bit_vec(bit_vec, Complex::new(0.0, 0.0));
         let mut state = State::new(1);
         state.add_or_insert(ket);
 
@@ -153,7 +155,7 @@ mod tests {
     /// the state is removed.
     #[test]
     fn test_add_or_insert_zero_amplitude_existing() {
-        let ket = Ket::new(ket_arr![1], Complex::new(-1.0, 0.0));
+        let ket = Ket::from_bit_vec(ket_bit_vec![1], Complex::new(-1.0, 0.0));
         let mut state = State::new(1);
         state.add_or_insert(ket);
 
