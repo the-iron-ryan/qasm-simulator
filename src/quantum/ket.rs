@@ -5,15 +5,7 @@ use std::hash::{Hash, Hasher};
 #[derive(Debug)]
 pub struct Ket {
     pub amplitude: Complex<f64>,
-    bits: BitVec<u8>,
-}
-
-/// Helper macro used to construct bit data for a `Ket`
-#[macro_export]
-macro_rules! ket_bit_vec {
-    ($x:expr ) => {
-        bitvec![u8, Lsb0; $x]
-    };
+    bits: BitVec,
 }
 
 impl Ket {
@@ -31,21 +23,21 @@ impl Ket {
     /// assert_eq!(ket.amplitude, Complex::new(1.0, 0.0));
     /// assert_eq!(ket.bits, ket_bits);
     /// ```
-    pub fn new(ket_bits: u8, amplitude: Complex<f64>) -> Ket {
+    pub fn new(ket_bits: usize, amplitude: Complex<f64>) -> Ket {
         Ket {
             amplitude,
             bits: BitVec::from_element(ket_bits),
         }
     }
 
-    pub fn from_bit_vec(ket_bits: BitVec<u8>, amplitude: Complex<f64>) -> Ket {
+    pub fn from_bit_vec(ket_bits: BitVec, amplitude: Complex<f64>) -> Ket {
         Ket {
             amplitude,
             bits: ket_bits,
         }
     }
 
-    pub fn from_bit_slice(ket_bits: &BitSlice<u8>, amplitude: Complex<f64>) -> Ket {
+    pub fn from_bit_slice(ket_bits: &BitSlice, amplitude: Complex<f64>) -> Ket {
         Ket {
             amplitude,
             bits: BitVec::from_bitslice(ket_bits),
@@ -60,12 +52,11 @@ impl Ket {
     /// ```
     /// use num::complex::Complex;
     /// use quantum_simulator::quantum::ket::Ket;
+    /// use bitvec::prelude::*;
     ///
-    /// let ket = Ket::new_zero_ket(10);
-    /// let expected_bit_arr = [false; 10];
-    /// assert_eq!(ket.num_qubits(), 10);
+    /// let ket = Ket::new_zero_ket();
     /// assert_eq!(ket.amplitude, Complex::new(1.0, 0.0));
-    /// assert_eq!(**ket.bits(), expected_bit_arr)
+    /// assert_eq!(*ket.bit_vec().bits, std::mem::size_of::<usize>());
     /// ```
     pub fn new_zero_ket() -> Ket {
         Ket {
@@ -90,7 +81,7 @@ impl Ket {
     /// assert_eq!(bit_vec.value(), 0b0000_0100);
     ///
     /// ```
-    pub fn bit_vec(&self) -> &BitVec<u8> {
+    pub fn bit_vec(&self) -> &BitVec {
         &self.bits
     }
 

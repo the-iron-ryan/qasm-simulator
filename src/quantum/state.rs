@@ -1,4 +1,4 @@
-use crate::{gates::gate::Gate, gates::gate::GateType, ket_bit_vec, quantum::ket::Ket};
+use crate::{gates::gate::Gate, gates::gate::GateType, quantum::ket::Ket};
 use bitvec::prelude::*;
 use num::complex::Complex;
 use std::collections::HashSet;
@@ -126,11 +126,11 @@ mod tests {
     /// Tests to add a basic Ket to the state.
     #[test]
     fn test_add_or_insert_basic() {
-        let ket = Ket::from_bit_vec(ket_bit_vec![0], Complex::new(0.5, 0.0));
+        let ket = Ket::from_bit_vec(bitvec![0], Complex::new(0.5, 0.0));
         let mut state = State::new(1);
         state.add_or_insert(ket);
 
-        let expected_ket = &Ket::from_bit_vec(ket_bit_vec![0], Complex::new(1.5, 0.0));
+        let expected_ket = &Ket::from_bit_vec(bitvec![0], Complex::new(1.5, 0.0));
         assert!(state.kets.contains(&expected_ket));
         if let Some(found_ket) = state.kets.take(expected_ket) {
             assert_eq!(found_ket.amplitude, expected_ket.amplitude);
