@@ -2,7 +2,7 @@ use bitvec::prelude::*;
 use num::complex::Complex;
 use std::hash::{Hash, Hasher};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Ket {
     pub amplitude: Complex<f64>,
     bits: BitVec,

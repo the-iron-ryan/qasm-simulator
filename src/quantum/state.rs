@@ -1,4 +1,4 @@
-use crate::{gates::gate::Gate, gates::gate::GateType, quantum::ket::Ket};
+use crate::{gates::gate::apply_gate_to_ket, gates::gate::GateResult,gates::gate::Gate, quantum::ket::Ket};
 use bitvec::prelude::*;
 use num::complex::Complex;
 use std::collections::HashSet;
@@ -69,7 +69,7 @@ impl State {
 
     /// Adds a new `Ket` to this state or adds to the amplitude if the ket
     /// already exists.
-    fn add_or_insert(&mut self, ket: Ket) {
+    pub fn add_or_insert(&mut self, ket: Ket) {
         // Ignore inserting a ket with zero amplitude.
         if ket.amplitude.norm() == 0.0 {
             return;
@@ -97,10 +97,7 @@ impl State {
     fn remove_zero_amplitude_kets(&mut self) {
         self.kets.retain(|ket| ket.amplitude.norm() > 0.0);
     }
-
-    fn apply_gate(&mut self, gate: &GateType) {
-        gate.apply(self);
-    }
+    
 }
 
 impl Eq for State {}
@@ -142,7 +139,7 @@ mod tests {
     /// Tests that a zero amplitude Ket is not added to the state.
     #[test]
     fn test_add_or_insert_zero_amplitude() {
-        let bit_vec = bitvec![u8, Lsb0; 0,1,0];
+        let bit_vec = bitvec![0, 1, 0];
         let ket = Ket::from_bit_vec(bit_vec, Complex::new(0.0, 0.0));
         let mut state = State::new(1);
         state.add_or_insert(ket);
@@ -155,7 +152,7 @@ mod tests {
     /// the state is removed.
     #[test]
     fn test_add_or_insert_zero_amplitude_existing() {
-        let ket = Ket::from_bit_vec(ket_bit_vec![1], Complex::new(-1.0, 0.0));
+        let ket = Ket::from_bit_vec(bitvec![1], Complex::new(-1.0, 0.0));
         let mut state = State::new(1);
         state.add_or_insert(ket);
 
