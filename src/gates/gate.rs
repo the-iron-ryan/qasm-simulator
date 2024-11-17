@@ -4,6 +4,7 @@ use num::Complex;
 use crate::quantum::{ket::Ket, state::State};
 use std::{f64::consts::PI, string::String};
 
+/// Enum representing all supported quantum gates.
 pub enum Gate {
     H { target: usize },
     X { target: usize },
@@ -12,12 +13,37 @@ pub enum Gate {
     CX { control: usize, target: usize },
 }
 
+/// Enum representing the result of applying a gate to a ket.
 pub enum GateKetResult {
     Ket(Ket),
     Kets([Ket; 2]),
     NotImplemented(String),
 }
 
+/// Apply a gate to a ket.
+///
+/// # Examples
+/// ```
+/// use num::complex::Complex;
+/// use quantum_simulator::gates::gate::{apply_gate_to_ket, Gate, GateKetResult};
+/// use quantum_simulator::quantum::ket::Ket;
+/// use bitvec::prelude::*;
+///
+/// let ket = Ket::new_zero_ket(1);
+/// let gate = Gate::H { target: 0 };
+/// let result = apply_gate_to_ket(&gate, ket);
+///
+/// let expected_ket1 = Ket::from_bit_vec(bitvec![0], Complex::new(1.0 / 2.0_f64.sqrt(), 0.0));
+/// let expected_ket2 = Ket::from_bit_vec(bitvec![1], Complex::new(1.0 / 2.0_f64.sqrt(), 0.0));
+///
+/// match result {
+///    GateKetResult::Kets([ket1, ket2]) => {
+///      assert_eq!(ket1, expected_ket1);
+///      assert_eq!(ket2, expected_ket2);
+///   }
+///  _ => panic!("Expected two kets."),
+/// }
+/// ```
 pub fn apply_gate_to_ket(gate: &Gate, mut ket: Ket) -> GateKetResult {
     match gate {
         Gate::H { target } => {
@@ -61,7 +87,27 @@ pub fn apply_gate_to_ket(gate: &Gate, mut ket: Ket) -> GateKetResult {
     }
 }
 
-fn apply_gate_to_state(state: State, gate: &Gate) -> State {
+/// Apply a gate to a state.
+///
+/// # Examples
+/// ```
+/// use num::complex::Complex;
+/// use quantum_simulator::gates::gate::{apply_gate_to_state, Gate};
+/// use quantum_simulator::quantum::ket::Ket;
+/// use quantum_simulator::quantum::state::State;
+/// use bitvec::prelude::*;
+///
+/// let mut state = State::new(1);
+/// state.add_or_insert(Ket::new_zero_ket(1));
+/// let gate = Gate::H { target: 0 };
+/// let superposition_state = apply_gate_to_state(state, &gate);
+///
+/// let expected_ket1 = Ket::from_bit_vec(bitvec![0], Complex::new(1.0 / 2.0_f64.sqrt(), 0.0));
+/// let expected_ket2 = Ket::from_bit_vec(bitvec![1], Complex::new(1.0 / 2.0_f64.sqrt(), 0.0));
+/// let expected_superposition_state = State::from_ket_vec(&vec![expected_ket1, expected_ket2]);
+/// assert_eq!(superposition_state, expected_superposition_state);
+/// ```
+pub fn apply_gate_to_state(state: State, gate: &Gate) -> State {
     let mut new_state = State::new(state.num_qubits());
     for ket in state.kets {
         match apply_gate_to_ket(gate, ket) {
@@ -117,12 +163,13 @@ mod tests {
 
         let back_to_zero_state = apply_gate_to_state(superposition_state, &gate);
         let expected_zero_state = State::from_ket_vec(&vec![Ket::new_zero_ket(1)]);
-        
+
         assert_eq!(back_to_zero_state, expected_zero_state);
     }
 
+    /// Test to apply an X gate to a ket.
     #[test]
-    fn test_apply_gate_to_ket_x() {
+    fn test_apply_x_to_ket() {
         let ket = Ket::from_bit_vec(bitvec![0, 0], Complex::new(1.0, 0.0));
         let gate = Gate::X { target: 1 };
         let result = apply_gate_to_ket(&gate, ket);
@@ -134,5 +181,118 @@ mod tests {
             }
             _ => panic!("Expected one ket."),
         }
+    }
+
+    /// Test to apply an X gate to a state.
+    #[test]
+    fn test_apply_x_to_gate() {
+        let mut state = State::new(2);
+        state.add_or_insert(Ket::from_bit_vec(bitvec![0, 0], Complex::new(1.0, 0.0)));
+        let gate = Gate::X { target: 1 };
+
+        let new_state = apply_gate_to_state(state, &gate);
+
+        let expected_ket = Ket::from_bit_vec(bitvec![0, 1], Complex::new(1.0, 0.0));
+        let expected_state = State::from_ket_vec(&vec![expected_ket]);
+
+        assert_eq!(new_state, expected_state);
+    }
+
+    /// Test to apply a T gate to a ket.
+    #[test]
+    fn tets_apply_t_to_ket() {
+        let ket = Ket::from_bit_vec(bitvec![0], Complex::new(1.0, 0.0));
+        let gate = Gate::T { target: 0 };
+        let result = apply_gate_to_ket(&gate, ket);
+
+        let expected_ket = Ket::from_bit_vec(bitvec![0], Complex::new(1.0 * PI / 4.0, 0.0).exp());
+        match result {
+            GateKetResult::Ket(ket) => {
+                assert_eq!(ket, expected_ket);
+            }
+            _ => panic!("Expected one ket."),
+        }
+    }
+
+    /// Test to apply a T gate to a state.
+    #[test]
+    fn test_apply_t_to_gate() {
+        let mut state = State::new(1);
+        state.add_or_insert(Ket::from_bit_vec(bitvec![0], Complex::new(1.0, 0.0)));
+        let gate = Gate::T { target: 0 };
+
+        let new_state = apply_gate_to_state(state, &gate);
+
+        let expected_ket = Ket::from_bit_vec(bitvec![0], Complex::new(1.0 * PI / 4.0, 0.0).exp());
+        let expected_state = State::from_ket_vec(&vec![expected_ket]);
+
+        assert_eq!(new_state, expected_state);
+    }
+
+    /// Test to apply a TDgr gate to a ket.
+    #[test]
+    fn tets_apply_tdgr_to_ket() {
+        let ket = Ket::from_bit_vec(bitvec![0], Complex::new(1.0, 0.0));
+        let gate = Gate::TDgr { target: 0 };
+        let result = apply_gate_to_ket(&gate, ket);
+
+        let expected_ket = Ket::from_bit_vec(bitvec![0], Complex::new(-1.0 * PI / 4.0, 0.0).exp());
+        match result {
+            GateKetResult::Ket(ket) => {
+                assert_eq!(ket, expected_ket);
+            }
+            _ => panic!("Expected one ket."),
+        }
+    }
+
+    /// Test to apply a TDgr gate to a state.
+    #[test]
+    fn test_apply_tdgr_to_state() {
+        let mut state = State::new(1);
+        state.add_or_insert(Ket::from_bit_vec(bitvec![1], Complex::new(1.0, 0.0)));
+        let gate = Gate::TDgr { target: 0 };
+
+        let new_state = apply_gate_to_state(state, &gate);
+
+        let expected_ket = Ket::from_bit_vec(bitvec![1], Complex::new(-1.0 * PI / 4.0, 0.0).exp());
+        let expected_state = State::from_ket_vec(&vec![expected_ket]);
+
+        assert_eq!(new_state, expected_state);
+    }
+
+    /// Test to apply a CX gate to a ket.
+    #[test]
+    fn test_apply_cx_to_ket() {
+        let ket = Ket::from_bit_vec(bitvec![1, 0], Complex::new(1.0, 0.0));
+        let gate = Gate::CX {
+            control: 0,
+            target: 1,
+        };
+        let result = apply_gate_to_ket(&gate, ket);
+
+        let expected_ket = Ket::from_bit_vec(bitvec![1, 1], Complex::new(1.0, 0.0));
+        match result {
+            GateKetResult::Ket(ket) => {
+                assert_eq!(ket, expected_ket);
+            }
+            _ => panic!("Expected one ket."),
+        }
+    }
+
+    #[test]
+    fn test_apply_cx_to_state() {
+        let mut state = State::new(2);
+        state.add_or_insert(Ket::from_bit_vec(bitvec![1, 1], Complex::new(1.0, 0.0)));
+        let gate = Gate::CX {
+            control: 0,
+            target: 1,
+        };
+
+        let new_state = apply_gate_to_state(state, &gate);
+
+        let expected_ket = Ket::from_bit_vec(bitvec![1, 0], Complex::new(1.0, 0.0));
+        let expected_state = State::from_ket_vec(&vec![expected_ket]);
+
+        assert_eq!(new_state, expected_state);
     }
 }

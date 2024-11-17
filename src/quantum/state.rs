@@ -98,12 +98,12 @@ impl State {
     }
 
     /// Removes a `Ket` from this state, if present.
-    fn remove(&mut self, ket: &Ket) {
+    pub fn remove(&mut self, ket: &Ket) {
         self.kets.remove(ket);
     }
 
     /// Removes all `Ket`s with zero amplitude from this state.
-    fn remove_zero_amplitude_kets(&mut self) {
+    pub fn remove_zero_amplitude_kets(&mut self) {
         self.kets.retain(|ket| ket.amplitude.norm() > 0.0);
     }
 }
