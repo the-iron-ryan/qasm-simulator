@@ -1,6 +1,4 @@
 use crate::quantum::ket::Ket;
-use bitvec::prelude::*;
-use num::complex::Complex;
 use std::collections::HashSet;
 
 #[derive(Debug)]
@@ -117,8 +115,6 @@ impl PartialEq for State {
 }
 
 mod tests {
-
-    use super::*;
 
     #[test]
     /// Test that a new state with zero qubits creates an empty state.

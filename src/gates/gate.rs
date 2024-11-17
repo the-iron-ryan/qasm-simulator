@@ -1,4 +1,3 @@
-use bitvec::prelude::*;
 use num::Complex;
 
 use crate::quantum::{ket::Ket, state::State};
@@ -127,7 +126,6 @@ pub fn apply_gate_to_state(state: State, gate: &Gate) -> State {
 }
 
 mod tests {
-    use super::*;
 
     /// Simple test to apply a Hadamard gate to a zero ket.
     #[test]
