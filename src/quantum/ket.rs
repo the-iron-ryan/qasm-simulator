@@ -21,7 +21,7 @@ impl Ket {
     /// let ket_bits = 0b0000_0100;
     /// let ket = Ket::new(ket_bits, Complex::new(1.0, 0.0));
     /// assert_eq!(ket.amplitude, Complex::new(1.0, 0.0));
-    /// assert_eq!(ket.bits, ket_bits);
+    /// assert_eq!(ket.bit_vec().as_raw_slice(), [ket_bits]);
     /// ```
     pub fn new(ket_bits: usize, amplitude: Complex<f64>) -> Ket {
         Ket {
@@ -30,6 +30,19 @@ impl Ket {
         }
     }
 
+    /// Creates a new `Ket` with a given bit vector and amplitude.
+    ///
+    /// # Examples
+    /// ```
+    /// use bitvec::prelude::*;
+    /// use num::complex::Complex;
+    /// use quantum_simulator::quantum::ket::Ket;
+    ///
+    /// let ket_bits = bitvec![0, 1, 1, 0];
+    /// let ket = Ket::from_bit_vec(ket_bits, Complex::new(1.0, 0.0));
+    /// assert_eq!(ket.amplitude, Complex::new(1.0, 0.0));
+    /// assert_eq!(*ket.bit_vec(), bitvec![0, 1, 1, 0]);
+    /// ```
     pub fn from_bit_vec(ket_bits: BitVec, amplitude: Complex<f64>) -> Ket {
         Ket {
             amplitude,
@@ -54,15 +67,12 @@ impl Ket {
     /// use quantum_simulator::quantum::ket::Ket;
     /// use bitvec::prelude::*;
     ///
-    /// let ket = Ket::new_zero_ket();
+    /// let ket = Ket::new_zero_ket(1);
     /// assert_eq!(ket.amplitude, Complex::new(1.0, 0.0));
-    /// assert_eq!(*ket.bit_vec().bits, std::mem::size_of::<usize>());
+    /// assert_eq!(ket.bit_vec().len(), 1);
     /// ```
-    pub fn new_zero_ket() -> Ket {
-        Ket {
-            amplitude: Complex::new(1.0, 0.0),
-            bits: BitVec::from_element(0b0000_0000),
-        }
+    pub fn new_zero_ket(num_qubits: usize) -> Ket {
+        Ket::from_bit_vec(bitvec![0; num_qubits], Complex::new(1.0, 0.0))
     }
 
     /// Get an immutable bitvector reference to the underlying bits

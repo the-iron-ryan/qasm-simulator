@@ -1,11 +1,11 @@
-use crate::{gates::gate::apply_gate_to_ket, gates::gate::GateResult,gates::gate::Gate, quantum::ket::Ket};
+use crate::quantum::ket::Ket;
 use bitvec::prelude::*;
 use num::complex::Complex;
 use std::collections::HashSet;
 
 #[derive(Debug)]
 pub struct State {
-    kets: HashSet<Ket>,
+    pub kets: HashSet<Ket>,
     num_qubits: usize,
 }
 
@@ -19,23 +19,48 @@ impl State {
     ///
     /// let state = State::new(3);
     /// assert_eq!(state.num_qubits(), 3);
-    /// for ket in state.kets() {
-    ///    assert_eq!(ket.num_qubits(), 3);
-    ///    assert_eq!(ket.amplitude, Complex::new(1.0, 0.0));
-    /// }
+    /// assert!(state.kets.is_empty());
     /// ```
     pub fn new(num_qubits: usize) -> Self {
-        if num_qubits == 0 {
-            return Self {
-                kets: HashSet::new(),
-                num_qubits: 0,
-            };
-        } else {
-            return Self {
-                kets: HashSet::from_iter(vec![Ket::new_zero_ket()]),
-                num_qubits,
-            };
+        return Self {
+            kets: HashSet::new(),
+            num_qubits,
+        };
+    }
+
+    /// Creates a new `State` from a vector of `Ket`s. Where all kets must have the same
+    /// number of qubits.
+    ///
+    /// # Examples
+    /// ```
+    /// use quantum_simulator::quantum::state::State;
+    /// use quantum_simulator::quantum::ket::Ket;
+    /// use num::complex::Complex;
+    /// use bitvec::prelude::*;
+    ///
+    /// let ket1 = Ket::from_bit_vec(bitvec![0, 0], Complex::new(1.0, 0.0));
+    /// let ket2 = Ket::from_bit_vec(bitvec![0, 1], Complex::new(1.0, 0.0));
+    /// let kets = vec![ket1, ket2];
+    /// let state = State::from_ket_vec(&kets);
+    /// assert_eq!(state.num_qubits(), 2);
+    ///
+    /// assert!(state.kets.contains(&kets[0]));
+    /// assert!(state.kets.contains(&kets[1]));
+    /// ```
+    pub fn from_ket_vec(kets: &Vec<Ket>) -> Self {
+        let num_qubits = kets[0].bit_vec().len();
+        for ket in kets {
+            if ket.bit_vec().len() != num_qubits {
+                panic!("All kets must have the same number of qubits.");
+            }
         }
+
+        let mut state = State::new(num_qubits);
+        for ket in kets {
+            state.add_or_insert(ket.clone());
+        }
+
+        state
     }
 
     /// Returns the number of qubits in this state.
@@ -49,22 +74,6 @@ impl State {
     /// ```
     pub fn num_qubits(&self) -> usize {
         self.num_qubits
-    }
-
-    /// Returns a non mutable reference to the kets in this state.
-    ///
-    /// # Examples
-    /// ```
-    /// use quantum_simulator::quantum::state::State;
-    /// use quantum_simulator::quantum::ket::Ket;
-    ///
-    /// let state = State::new(5);
-    /// let state_kets = state.kets();
-    /// assert_eq!(state_kets.len(), 1);
-    /// assert!(state_kets.contains(&Ket::new_zero_ket(5)));
-    /// ```
-    pub fn kets(&self) -> &HashSet<Ket> {
-        &self.kets
     }
 
     /// Adds a new `Ket` to this state or adds to the amplitude if the ket
@@ -97,7 +106,6 @@ impl State {
     fn remove_zero_amplitude_kets(&mut self) {
         self.kets.retain(|ket| ket.amplitude.norm() > 0.0);
     }
-    
 }
 
 impl Eq for State {}
@@ -157,5 +165,27 @@ mod tests {
         state.add_or_insert(ket);
 
         assert!(state.kets.is_empty());
+    }
+
+    #[test]
+    fn test_remove_ket() {
+        let ket = Ket::from_bit_vec(bitvec![0], Complex::new(0.5, 0.0));
+        let mut state = State::new(1);
+        state.add_or_insert(ket.clone());
+
+        state.remove(&ket);
+        assert!(state.kets.is_empty());
+    }
+
+    #[test]
+    fn test_remove_zero_amplitude_kets() {
+        let ket1 = Ket::from_bit_vec(bitvec![0], Complex::new(0.5, 0.0));
+        let ket2 = Ket::from_bit_vec(bitvec![1], Complex::new(0.0, 0.0));
+        let mut state = State::new(1);
+        state.add_or_insert(ket1);
+        state.add_or_insert(ket2);
+
+        state.remove_zero_amplitude_kets();
+        assert!(state.kets.len() == 1);
     }
 }
