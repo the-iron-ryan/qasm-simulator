@@ -5,11 +5,13 @@ use regex::Regex;
 use std::env;
 use std::fs::File;
 use std::io::{self, BufRead};
+use std::time::Instant;
 
 pub mod gates;
 pub mod quantum;
 
 use quantum_simulator::gates::gate::{apply_gate_to_state, Gate};
+use quantum_simulator::quantum::ket::Ket;
 use quantum_simulator::quantum::register::Register;
 use quantum_simulator::quantum::state::State;
 
@@ -24,7 +26,7 @@ fn main() -> io::Result<()> {
     let mut line_number = 1;
 
     // Handle QASM version header.
-    let header_re = Regex::new(r"^OPENQASM\s+(\d+\.\d+)$").unwrap();
+    let header_re = Regex::new(r"OPENQASM\s+(\d+\.\d+)").unwrap();
     if let Some(Ok(header)) = reader_lines.next() {
         if let Some(caps) = header_re.captures(&header) {
             let version = caps.get(1).unwrap().as_str();
@@ -105,8 +107,16 @@ fn main() -> io::Result<()> {
     }
 
     // Create a new quantum state.
-    let mut state = match quantum_register {
-        Some(register) => State::new(register.size),
+    let mut state = match &quantum_register {
+        Some(register) => {
+            let num_qubits = register.size;
+
+            println!("Simulating file {filename} with {num_qubits} qubits");
+
+            let mut state = State::new(num_qubits);
+            state.add_or_insert(Ket::new_zero_ket(num_qubits));
+            state
+        }
         None => {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -119,19 +129,27 @@ fn main() -> io::Result<()> {
 
     // Creates three matching groups. One for the instruction, and two for the possible
     // qubit registers.
-    let instruction_re = Regex::new(r"([a-z]+)\s(?:q\[(\d)\])*(?:(?:,|\s)q\[(\d)\])*").unwrap();
+    let qreg_name = quantum_register.unwrap().name;
+    let instruction_re_str =
+        format![r"([a-z]+)\s(?:{qreg_name}\[([0-9]+)\])*(?:(?:,|\s){qreg_name}\[([0-9]+)\])*"];
+    let instruction_re = Regex::new(&instruction_re_str).unwrap();
+    let start = Instant::now();
     for line_result in &mut reader_lines {
         line_number += 1;
         match line_result {
             Ok(line) => {
                 if let Some(caps) = instruction_re.captures(&line) {
-                    let (_, [instruction, qubit1, qubit2]) = caps.extract();
+                    let instruction = caps.get(1).unwrap().as_str();
+                    let qubit1: Option<usize> =
+                        caps.get(2).map(|qubit| qubit.as_str().parse().unwrap());
+                    let qubit2: Option<usize> =
+                        caps.get(3).map(|qubit| qubit.as_str().parse().unwrap());
                     match instruction {
                         "h" => {
                             state = apply_gate_to_state(
                                 state,
                                 &Gate::H {
-                                    target: qubit1.parse().unwrap(),
+                                    target: qubit1.unwrap(),
                                 },
                             );
                         }
@@ -139,7 +157,7 @@ fn main() -> io::Result<()> {
                             state = apply_gate_to_state(
                                 state,
                                 &Gate::X {
-                                    target: qubit1.parse().unwrap(),
+                                    target: qubit1.unwrap(),
                                 },
                             );
                         }
@@ -147,7 +165,7 @@ fn main() -> io::Result<()> {
                             state = apply_gate_to_state(
                                 state,
                                 &Gate::T {
-                                    target: qubit1.parse().unwrap(),
+                                    target: qubit1.unwrap(),
                                 },
                             )
                         }
@@ -155,7 +173,7 @@ fn main() -> io::Result<()> {
                             state = apply_gate_to_state(
                                 state,
                                 &Gate::TDgr {
-                                    target: qubit1.parse().unwrap(),
+                                    target: qubit1.unwrap(),
                                 },
                             )
                         }
@@ -163,8 +181,8 @@ fn main() -> io::Result<()> {
                             state = apply_gate_to_state(
                                 state,
                                 &Gate::CX {
-                                    control: qubit1.parse().unwrap(),
-                                    target: qubit2.parse().unwrap(),
+                                    control: qubit1.unwrap(),
+                                    target: qubit2.unwrap(),
                                 },
                             )
                         }
@@ -187,6 +205,10 @@ fn main() -> io::Result<()> {
             }
         }
     }
+    let duration = start.elapsed();
+
+    println!("Final state: {}", state);
+    println!("Execution time: {:?}\n", duration);
 
     Ok(())
 }

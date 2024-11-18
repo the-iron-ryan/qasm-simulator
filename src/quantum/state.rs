@@ -88,7 +88,7 @@ impl State {
 
             // Only bother adding the ket back to the state if the amplitude is
             // non-zero.
-            if found_ket.amplitude.norm() > 0.0 {
+            if found_ket.amplitude.norm() > 1e-6 {
                 self.kets.insert(found_ket);
             }
         } else {
