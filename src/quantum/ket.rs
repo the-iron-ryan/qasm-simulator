@@ -160,10 +160,10 @@ impl fmt::Display for Ket {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "({}{}{}i)",
-            self.amplitude.re,
+            "({:.3}{}{:.3}i)",
+            (self.amplitude.re * 1000.0).round() / 1000.0,
             if self.amplitude.im < 0.0 { "-" } else { "+" },
-            self.amplitude.im.abs()
+            (self.amplitude.im.abs() * 1000.0).round() / 1000.0
         )?;
         write!(f, "|")?;
         for bit in self.bits.iter().rev() {
