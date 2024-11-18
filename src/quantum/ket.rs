@@ -1,5 +1,6 @@
 use bitvec::prelude::*;
 use num::complex::Complex;
+use std::fmt;
 use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Clone)]
@@ -152,4 +153,31 @@ impl Hash for Ket {
     }
 }
 
-mod tests {}
+impl fmt::Display for Ket {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "({}{}{}i)",
+            self.amplitude.re,
+            if self.amplitude.im < 0.0 { "-" } else { "+" },
+            self.amplitude.im.abs()
+        )?;
+        write!(f, "|")?;
+        for bit in self.bits.iter().rev() {
+            write!(f, "{}", if *bit { "1" } else { "0" })?;
+        }
+        write!(f, "⟩")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn test_fmt_display() {
+        let ket = Ket::from_bit_vec(bitvec![0, 1, 0, 0], Complex::new(1.0, 0.0));
+        assert_eq!(format!("{}", ket), "(1+0i)|0010⟩");
+    }
+}

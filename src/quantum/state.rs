@@ -1,5 +1,6 @@
 use crate::quantum::ket::Ket;
 use std::collections::HashSet;
+use std::fmt;
 
 #[derive(Debug)]
 pub struct State {
@@ -114,7 +115,29 @@ impl PartialEq for State {
     }
 }
 
+impl fmt::Display for State {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Order the kets by the underlying bit vector.
+        let mut ket_vec: Vec<&Ket> = self.kets.iter().collect();
+        ket_vec.sort_by(|a, b| a.bit_vec().cmp(&b.bit_vec()));
+
+        let mut ket_iter = ket_vec.iter();
+        if let Some(first_ket) = ket_iter.next() {
+            write!(f, "{}", first_ket)?;
+            for ket in ket_iter {
+                write!(f, " + {}", ket)?;
+            }
+        }
+        fmt::Result::Ok(())
+    }
+}
+
+#[cfg(test)]
 mod tests {
+
+    use super::*;
+    use bitvec::prelude::*;
+    use num::complex::Complex;
 
     #[test]
     /// Test that a new state with zero qubits creates an empty state.
@@ -183,5 +206,14 @@ mod tests {
 
         state.remove_zero_amplitude_kets();
         assert!(state.kets.len() == 1);
+    }
+
+    #[test]
+    fn test_fmt_display() {
+        let ket1 = Ket::from_bit_vec(bitvec![0], Complex::new(0.5, 0.0));
+        let ket2 = Ket::from_bit_vec(bitvec![1], Complex::new(0.5, 0.5));
+        let state = State::from_ket_vec(&vec![ket1, ket2]);
+
+        assert_eq!(format!("{}", state), "(0.5+0i)|0⟩ + (0.5+0.5i)|1⟩");
     }
 }

@@ -125,7 +125,12 @@ pub fn apply_gate_to_state(state: State, gate: &Gate) -> State {
     new_state
 }
 
+#[cfg(test)]
 mod tests {
+
+    use super::*;
+    use bitvec::prelude::*;
+    use num::Complex;
 
     /// Simple test to apply a Hadamard gate to a zero ket.
     #[test]
