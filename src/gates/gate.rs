@@ -50,11 +50,11 @@ pub fn apply_gate_to_ket(gate: &Gate, mut ket: Ket) -> GateKetResult {
             flipped_ket.flip(*target);
 
             if ket.get(*target) {
-                ket.amplitude *= Complex::new(-1.0, 0.0);
+                ket.amplitude *= -1.0;
             }
 
-            ket.amplitude *= Complex::new(1.0 / 2.0_f64.sqrt(), 0.0);
-            flipped_ket.amplitude *= Complex::new(1.0 / 2.0_f64.sqrt(), 0.0);
+            ket.amplitude *= 1.0 / 2.0_f64.sqrt();
+            flipped_ket.amplitude *= 1.0 / 2.0_f64.sqrt();
 
             GateKetResult::Kets([ket, flipped_ket])
         }
@@ -64,14 +64,14 @@ pub fn apply_gate_to_ket(gate: &Gate, mut ket: Ket) -> GateKetResult {
         }
         Gate::T { target } => {
             if ket.get(*target) {
-                ket.amplitude *= Complex::new(1.0 * PI / 4.0, 0.0).exp();
+                ket.amplitude *= Complex::new(0.0, 1.0 * PI / 4.0).exp();
             }
 
             GateKetResult::Ket(ket)
         }
         Gate::TDgr { target } => {
             if ket.get(*target) {
-                ket.amplitude *= Complex::new(-1.0 * PI / 4.0, 0.0).exp();
+                ket.amplitude *= Complex::new(0.0, -1.0 * PI / 4.0).exp();
             }
 
             GateKetResult::Ket(ket)
@@ -132,6 +132,21 @@ mod tests {
     use bitvec::prelude::*;
     use num::Complex;
 
+    /// Helper function to assert that two kets are equal.
+    fn assert_ket_eq(ket1: &Ket, ket2: &Ket) {
+        assert_eq!(ket1.amplitude, ket2.amplitude);
+        assert_eq!(ket1.bit_vec(), ket2.bit_vec());
+    }
+
+    /// Helper function to assert that two states are equal.
+    fn assert_state_eq(state1: &State, state2: &State) {
+        assert_eq!(state1.num_qubits(), state2.num_qubits());
+        assert_eq!(state1.kets.len(), state2.kets.len());
+        for ket in state1.kets.iter() {
+            assert!(state2.kets.contains(ket));
+        }
+    }
+
     /// Simple test to apply a Hadamard gate to a zero ket.
     #[test]
     fn test_apply_h_to_ket() {
@@ -143,8 +158,8 @@ mod tests {
         let expected_ket2 = Ket::from_bit_vec(bitvec![1], Complex::new(1.0 / 2.0_f64.sqrt(), 0.0));
         match result {
             GateKetResult::Kets([ket1, ket2]) => {
-                assert_eq!(ket1, expected_ket1);
-                assert_eq!(ket2, expected_ket2);
+                assert_ket_eq(&ket1, &expected_ket1);
+                assert_ket_eq(&ket2, &expected_ket2);
             }
             _ => panic!("Expected two kets."),
         }
@@ -162,12 +177,12 @@ mod tests {
         let expected_ket2 = Ket::from_bit_vec(bitvec![1], Complex::new(1.0 / 2.0_f64.sqrt(), 0.0));
         let expected_superposition_state = State::from_ket_vec(&vec![expected_ket1, expected_ket2]);
 
-        assert_eq!(superposition_state, expected_superposition_state);
+        assert_state_eq(&superposition_state, &expected_superposition_state);
 
         let back_to_zero_state = apply_gate_to_state(superposition_state, &gate);
         let expected_zero_state = State::from_ket_vec(&vec![Ket::new_zero_ket(1)]);
 
-        assert_eq!(back_to_zero_state, expected_zero_state);
+        assert_state_eq(&back_to_zero_state, &expected_zero_state);
     }
 
     /// Test to apply an X gate to a ket.
@@ -180,7 +195,7 @@ mod tests {
         let expected_ket = Ket::from_bit_vec(bitvec![0, 1], Complex::new(1.0, 0.0));
         match result {
             GateKetResult::Ket(ket) => {
-                assert_eq!(ket, expected_ket);
+                assert_ket_eq(&ket, &expected_ket);
             }
             _ => panic!("Expected one ket."),
         }
@@ -198,20 +213,23 @@ mod tests {
         let expected_ket = Ket::from_bit_vec(bitvec![0, 1], Complex::new(1.0, 0.0));
         let expected_state = State::from_ket_vec(&vec![expected_ket]);
 
-        assert_eq!(new_state, expected_state);
+        assert_state_eq(&new_state, &expected_state);
     }
 
     /// Test to apply a T gate to a ket.
     #[test]
     fn tets_apply_t_to_ket() {
-        let ket = Ket::from_bit_vec(bitvec![0], Complex::new(1.0, 0.0));
+        let ket = Ket::from_bit_vec(bitvec![1], Complex::new(1.0, 0.0));
         let gate = Gate::T { target: 0 };
         let result = apply_gate_to_ket(&gate, ket);
 
-        let expected_ket = Ket::from_bit_vec(bitvec![0], Complex::new(1.0 * PI / 4.0, 0.0).exp());
+        let expected_ket = Ket::from_bit_vec(
+            bitvec![1],
+            Complex::new(1.0, 0.0) * Complex::new(0.0, 1.0 * PI / 4.0).exp(),
+        );
         match result {
             GateKetResult::Ket(ket) => {
-                assert_eq!(ket, expected_ket);
+                assert_ket_eq(&ket, &expected_ket);
             }
             _ => panic!("Expected one ket."),
         }
@@ -221,28 +239,34 @@ mod tests {
     #[test]
     fn test_apply_t_to_gate() {
         let mut state = State::new(1);
-        state.add_or_insert(Ket::from_bit_vec(bitvec![0], Complex::new(1.0, 0.0)));
+        state.add_or_insert(Ket::from_bit_vec(bitvec![1], Complex::new(1.0, 0.0)));
         let gate = Gate::T { target: 0 };
 
         let new_state = apply_gate_to_state(state, &gate);
 
-        let expected_ket = Ket::from_bit_vec(bitvec![0], Complex::new(1.0 * PI / 4.0, 0.0).exp());
+        let expected_ket = Ket::from_bit_vec(
+            bitvec![1],
+            Complex::new(1.0, 0.0) * Complex::new(0.0, 1.0 * PI / 4.0).exp(),
+        );
         let expected_state = State::from_ket_vec(&vec![expected_ket]);
 
-        assert_eq!(new_state, expected_state);
+        assert_state_eq(&new_state, &expected_state);
     }
 
     /// Test to apply a TDgr gate to a ket.
     #[test]
     fn tets_apply_tdgr_to_ket() {
-        let ket = Ket::from_bit_vec(bitvec![0], Complex::new(1.0, 0.0));
+        let ket = Ket::from_bit_vec(bitvec![1], Complex::new(1.0, 0.0));
         let gate = Gate::TDgr { target: 0 };
         let result = apply_gate_to_ket(&gate, ket);
 
-        let expected_ket = Ket::from_bit_vec(bitvec![0], Complex::new(-1.0 * PI / 4.0, 0.0).exp());
+        let expected_ket = Ket::from_bit_vec(
+            bitvec![1],
+            Complex::new(1.0, 0.0) * Complex::new(0.0, -1.0 * PI / 4.0).exp(),
+        );
         match result {
             GateKetResult::Ket(ket) => {
-                assert_eq!(ket, expected_ket);
+                assert_ket_eq(&ket, &expected_ket);
             }
             _ => panic!("Expected one ket."),
         }
@@ -257,10 +281,14 @@ mod tests {
 
         let new_state = apply_gate_to_state(state, &gate);
 
-        let expected_ket = Ket::from_bit_vec(bitvec![1], Complex::new(-1.0 * PI / 4.0, 0.0).exp());
+        let expected_ket = Ket::from_bit_vec(
+            bitvec![1],
+            Complex::new(1.0, 0.0) * Complex::new(0.0, -1.0 * PI / 4.0).exp(),
+        );
+
         let expected_state = State::from_ket_vec(&vec![expected_ket]);
 
-        assert_eq!(new_state, expected_state);
+        assert_state_eq(&new_state, &expected_state);
     }
 
     /// Test to apply a CX gate to a ket.
@@ -276,7 +304,7 @@ mod tests {
         let expected_ket = Ket::from_bit_vec(bitvec![1, 1], Complex::new(1.0, 0.0));
         match result {
             GateKetResult::Ket(ket) => {
-                assert_eq!(ket, expected_ket);
+                assert_ket_eq(&ket, &expected_ket);
             }
             _ => panic!("Expected one ket."),
         }
@@ -296,6 +324,6 @@ mod tests {
         let expected_ket = Ket::from_bit_vec(bitvec![1, 0], Complex::new(1.0, 0.0));
         let expected_state = State::from_ket_vec(&vec![expected_ket]);
 
-        assert_eq!(new_state, expected_state);
+        assert_state_eq(&new_state, &expected_state);
     }
 }

@@ -139,6 +139,7 @@ impl Ket {
     }
 }
 
+// For ket equality, we only care about the bits and not the amplitude.
 impl PartialEq for Ket {
     fn eq(&self, other: &Self) -> bool {
         *self.bits == *other.bits
@@ -147,6 +148,8 @@ impl PartialEq for Ket {
 
 impl Eq for Ket {}
 
+// Hash kets on only the bits and not the amplitude so that they clash
+// in a hashset if they have the same bits.
 impl Hash for Ket {
     fn hash<H: Hasher>(&self, state: &mut H) {
         (*self.bits).hash(state);

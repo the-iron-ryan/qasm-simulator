@@ -18,6 +18,7 @@ use quantum_simulator::quantum::state::State;
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
     let filename = &args[1];
+    // let filename = "./qasm/f2_232.qasm";
 
     let file = File::open(filename)?;
     let reader = io::BufReader::new(file);
