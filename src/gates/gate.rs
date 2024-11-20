@@ -10,6 +10,55 @@ pub enum Gate {
     T { target: usize },
     TDgr { target: usize },
     CX { control: usize, target: usize },
+    Toffoli { controls: Vec<usize>, target: usize },
+}
+
+/// Struct representing a composite gate composed of multiple basis gates.
+pub struct CompositeGate {
+    gates: Vec<Gate>,
+}
+
+impl CompositeGate {
+    /// Creates a new `CompositeGate` with the given gates.
+    ///
+    /// # Examples
+    /// ```
+    /// use quantum_simulator::gates::gate::{CompositeGate, Gate};
+    ///
+    /// let gates = vec![
+    ///    Gate::H { target: 0 },
+    ///    Gate::X { target: 1 },
+    /// ];
+    /// let composite_gate = CompositeGate::new(gates);
+    /// ```
+    pub fn new(gates: Vec<Gate>) -> Self {
+        Self { gates }
+    }
+
+    pub fn add_gate(&mut self, gate: Gate) {
+        self.gates.push(gate);
+    }
+
+    pub fn apply_to_ket(&self, ket: Ket) -> Ket {
+        let mut new_ket = ket;
+        for gate in self.gates.iter() {
+            match apply_gate_to_ket(gate, new_ket) {
+                GateKetResult::Ket(k) => {
+                    new_ket = k;
+                }
+                _ => panic!("Composite gate must only contain single qubit gates."),
+            }
+        }
+        new_ket
+    }
+
+    pub fn apply_to_state(&self, state: State) -> State {
+        let mut new_state = state;
+        for gate in self.gates.iter() {
+            new_state = apply_gate_to_state(new_state, gate);
+        }
+        new_state
+    }
 }
 
 /// Enum representing the result of applying a gate to a ket.
@@ -81,6 +130,18 @@ pub fn apply_gate_to_ket(gate: &Gate, mut ket: Ket) -> GateKetResult {
                 ket.flip(*target);
             }
 
+            GateKetResult::Ket(ket)
+        }
+        Gate::Toffoli { controls, target } => {
+            for control in controls {
+                // If any control is zero, do nothing.
+                if !ket.get(*control) {
+                    return GateKetResult::Ket(ket);
+                }
+            }
+            
+            // If all controls are one, flip the target.
+            ket.flip(*target);
             GateKetResult::Ket(ket)
         }
     }
