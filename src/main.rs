@@ -205,6 +205,7 @@ fn main() -> io::Result<()> {
                 ));
             }
         }
+        // println!("State after instruction: {}", state);
     }
     let duration = start.elapsed();
 
