@@ -1,9 +1,10 @@
 use num::Complex;
 
-use crate::quantum::{ket::Ket, state::State};
+use crate::quantum::{common::Equivalency, ket::Ket, state::State};
 use std::{f64::consts::PI, string::String};
 
 /// Enum representing all supported quantum gates.
+#[derive(Debug, PartialEq)]
 pub enum Gate {
     H { target: usize },
     X { target: usize },
@@ -30,6 +31,10 @@ impl CompositeGate {
     ///    Gate::X { target: 1 },
     /// ];
     /// let composite_gate = CompositeGate::new(gates);
+    ///
+    /// assert!(composite_gate.num_gates() == 2);
+    /// assert!(composite_gate.contains_gate(&Gate::H { target: 0 }));
+    /// assert!(composite_gate.contains_gate(&Gate::X { target: 1 }));
     /// ```
     pub fn new(gates: Vec<Gate>) -> Self {
         Self { gates }
@@ -39,25 +44,26 @@ impl CompositeGate {
         self.gates.push(gate);
     }
 
-    pub fn apply_to_ket(&self, ket: Ket) -> Ket {
-        let mut new_ket = ket;
-        for gate in self.gates.iter() {
-            match apply_gate_to_ket(gate, new_ket) {
-                GateKetResult::Ket(k) => {
-                    new_ket = k;
-                }
-                _ => panic!("Composite gate must only contain single qubit gates."),
-            }
-        }
-        new_ket
+    pub fn num_gates(&self) -> usize {
+        self.gates.len()
     }
 
-    pub fn apply_to_state(&self, state: State) -> State {
-        let mut new_state = state;
-        for gate in self.gates.iter() {
-            new_state = apply_gate_to_state(new_state, gate);
-        }
-        new_state
+    /// Returns true if the composite gate contains the given gate.
+    ///
+    /// # Examples
+    /// ```
+    /// use quantum_simulator::gates::gate::{CompositeGate, Gate};
+    ///
+    /// let gates = vec![
+    ///   Gate::H { target: 0 },
+    ///  Gate::X { target: 1 },
+    /// ];
+    /// let composite_gate = CompositeGate::new(gates);
+    /// assert!(composite_gate.contains_gate(&Gate::H { target: 0 }));
+    /// assert!(!composite_gate.contains_gate(&Gate::X { target: 0 }));
+    /// ```
+    pub fn contains_gate(&self, gate: &Gate) -> bool {
+        self.gates.contains(gate)
     }
 }
 
@@ -139,7 +145,7 @@ pub fn apply_gate_to_ket(gate: &Gate, mut ket: Ket) -> GateKetResult {
                     return GateKetResult::Ket(ket);
                 }
             }
-            
+
             // If all controls are one, flip the target.
             ket.flip(*target);
             GateKetResult::Ket(ket)
@@ -186,6 +192,38 @@ pub fn apply_gate_to_state(state: State, gate: &Gate) -> State {
     new_state
 }
 
+/// Apply a composite gate to a state. This is done by applying each gate in the composite gate
+/// to the state in order.
+///
+/// # Examples
+/// ```
+/// use num::complex::Complex;
+/// use quantum_simulator::gates::gate::{apply_gate_to_state, Gate};
+/// use quantum_simulator::quantum::ket::Ket;
+/// use quantum_simulator::quantum::state::State;
+/// use bitvec::prelude::*;
+///
+/// let mut state = State::new(2);
+/// state.add_or_insert(Ket::new_zero_ket(2));
+///  let gates = vec![
+///   Gate::X { target: 0 },
+///   Gate::X { target: 1 },
+/// ];
+/// let composite_gate = CompositeGate::new(gates)
+/// let result = apply_composite_gate_to_state(state, &composite_gate);
+///
+/// let expected_ket = Ket::from_bit_vec(bitvec![1, 1], Complex::new(1.0, 0.0));
+/// let expected_state = State::from_ket_vec(&vec![expected_ket]);
+///
+/// ```
+pub fn apply_composite_gate_to_state(state: State, composite_gate: &CompositeGate) -> State {
+    let mut new_state = state;
+    for gate in composite_gate.gates.iter() {
+        new_state = apply_gate_to_state(new_state, gate);
+    }
+    new_state
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -195,17 +233,12 @@ mod tests {
 
     /// Helper function to assert that two kets are equal.
     fn assert_ket_eq(ket1: &Ket, ket2: &Ket) {
-        assert_eq!(ket1.amplitude, ket2.amplitude);
-        assert_eq!(ket1.bit_vec(), ket2.bit_vec());
+        assert!(ket1.are_equivalent(ket2));
     }
 
     /// Helper function to assert that two states are equal.
     fn assert_state_eq(state1: &State, state2: &State) {
-        assert_eq!(state1.num_qubits(), state2.num_qubits());
-        assert_eq!(state1.kets.len(), state2.kets.len());
-        for ket in state1.kets.iter() {
-            assert!(state2.kets.contains(ket));
-        }
+        assert!(state1.are_equivalent(state2));
     }
 
     /// Simple test to apply a Hadamard gate to a zero ket.

@@ -1,6 +1,9 @@
+use crate::quantum::common::Equivalency;
 use crate::quantum::ket::Ket;
 use std::collections::HashSet;
 use std::fmt;
+
+use super::ket;
 
 #[derive(Debug)]
 pub struct State {
@@ -104,6 +107,39 @@ impl State {
     /// Removes all `Ket`s with zero amplitude from this state.
     pub fn remove_zero_amplitude_kets(&mut self) {
         self.kets.retain(|ket| ket.amplitude.norm() > 0.0);
+    }
+}
+
+impl Equivalency for State {
+    /// Special check to see if two kets are considered equivalent.
+    ///
+    /// # Examples
+    /// ```
+    /// use num::complex::Complex;
+    /// use quantum_simulator::quantum::ket::Ket;
+    /// use quantum_simulator::quantum::state::State;
+    /// use bitvec::prelude::*;
+    /// use quantum_simulator::quantum::common::Equivalency;
+    ///
+    /// let ket1 = Ket::new_zero_ket(2);
+    /// let ket2 = Ket::new_zero_ket(2);
+    ///
+    /// let state1 = State::from_ket_vec(&vec![ket1.clone(), ket2.clone()]);
+    /// let state2 = State::from_ket_vec(&vec![ket2.clone(), ket1.clone()]);
+    ///
+    /// assert!(state1.are_equivalent(&state2));
+    ///
+    /// ```
+    fn are_equivalent(&self, other: &Self) -> bool {
+        let are_equivalent = self.num_qubits == other.num_qubits;
+
+        let mut our_ket_vec: Vec<&Ket> = self.kets.iter().collect();
+        let mut other_ket_vec: Vec<&Ket> = other.kets.iter().collect();
+
+        let our_sorted_kets = our_ket_vec.sort_by(|a, b| a.bit_vec().cmp(&b.bit_vec()));
+        let other_sorted_kets = other_ket_vec.sort_by(|a, b| a.bit_vec().cmp(&b.bit_vec()));
+
+        are_equivalent && our_sorted_kets == other_sorted_kets
     }
 }
 

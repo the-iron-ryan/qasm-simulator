@@ -2,6 +2,7 @@ use bitvec::prelude::*;
 use num::complex::Complex;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use crate::quantum::common::Equivalency;
 
 #[derive(Debug, Clone)]
 pub struct Ket {
@@ -136,6 +137,25 @@ impl Ket {
     pub fn flip(&mut self, index: usize) {
         let cur_val = self.get(index);
         self.bits.set(index, !cur_val);
+    }
+
+}
+
+impl Equivalency for Ket {
+    /// Special check to see if two kets are considered equivalent.
+    /// 
+    /// # Examples
+    /// ```
+    /// use num::complex::Complex;
+    /// use quantum_simulator::quantum::ket::Ket;
+    /// 
+    /// let ket1 = Ket::new_zero_ket(2);
+    /// let ket2 = Ket::new_zero_ket(2);
+    /// 
+    /// assert!(ket1.are_equivalent(&ket2));
+    /// ```
+    fn are_equivalent(&self, other: &Self) -> bool {
+        self.bits == other.bits && self.amplitude == other.amplitude
     }
 }
 
