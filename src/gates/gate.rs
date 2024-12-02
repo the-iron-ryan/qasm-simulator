@@ -1,7 +1,7 @@
 use num::Complex;
 
 use crate::quantum::{common::Equivalency, ket::Ket, state::State};
-use std::{f64::consts::PI, string::String};
+use std::{f64::consts::PI, mem, string::String};
 
 /// Enum representing all supported quantum gates.
 #[derive(Debug, PartialEq)]
@@ -12,65 +12,14 @@ pub enum Gate {
     TDgr { target: usize },
     CX { control: usize, target: usize },
     Toffoli { controls: Vec<usize>, target: usize },
-}
 
-/// Struct representing a composite gate composed of multiple basis gates.
-pub struct CompositeGate {
-    gates: Vec<Gate>,
-}
-
-impl CompositeGate {
-    /// Creates a new `CompositeGate` with the given gates.
-    ///
-    /// # Examples
-    /// ```
-    /// use quantum_simulator::gates::gate::{CompositeGate, Gate};
-    ///
-    /// let gates = vec![
-    ///    Gate::H { target: 0 },
-    ///    Gate::X { target: 1 },
-    /// ];
-    /// let composite_gate = CompositeGate::new(gates);
-    ///
-    /// assert!(composite_gate.num_gates() == 2);
-    /// assert!(composite_gate.contains_gate(&Gate::H { target: 0 }));
-    /// assert!(composite_gate.contains_gate(&Gate::X { target: 1 }));
-    /// ```
-    pub fn new(gates: Vec<Gate>) -> Self {
-        Self { gates }
-    }
-
-    pub fn add_gate(&mut self, gate: Gate) {
-        self.gates.push(gate);
-    }
-
-    pub fn num_gates(&self) -> usize {
-        self.gates.len()
-    }
-
-    /// Returns true if the composite gate contains the given gate.
-    ///
-    /// # Examples
-    /// ```
-    /// use quantum_simulator::gates::gate::{CompositeGate, Gate};
-    ///
-    /// let gates = vec![
-    ///   Gate::H { target: 0 },
-    ///  Gate::X { target: 1 },
-    /// ];
-    /// let composite_gate = CompositeGate::new(gates);
-    /// assert!(composite_gate.contains_gate(&Gate::H { target: 0 }));
-    /// assert!(!composite_gate.contains_gate(&Gate::X { target: 0 }));
-    /// ```
-    pub fn contains_gate(&self, gate: &Gate) -> bool {
-        self.gates.contains(gate)
-    }
+    Composite { gates: Vec<Gate> },
 }
 
 /// Enum representing the result of applying a gate to a ket.
 pub enum GateKetResult {
     Ket(Ket),
-    Kets([Ket; 2]),
+    Kets(Vec<Ket>),
     NotImplemented(String),
 }
 
@@ -111,7 +60,7 @@ pub fn apply_gate_to_ket(gate: &Gate, mut ket: Ket) -> GateKetResult {
             ket.amplitude *= 1.0 / 2.0_f64.sqrt();
             flipped_ket.amplitude *= 1.0 / 2.0_f64.sqrt();
 
-            GateKetResult::Kets([ket, flipped_ket])
+            GateKetResult::Kets(vec![ket, flipped_ket])
         }
         Gate::X { target } => {
             ket.flip(*target);
@@ -150,6 +99,33 @@ pub fn apply_gate_to_ket(gate: &Gate, mut ket: Ket) -> GateKetResult {
             ket.flip(*target);
             GateKetResult::Ket(ket)
         }
+        Gate::Composite { gates } => {
+            let mut cur_kets: Vec<Ket> = vec![ket];
+            let mut result_kets: Vec<Ket> = Vec::new();
+            for gate in gates.iter() {
+                while let Some(ket) = cur_kets.pop() {
+                    match apply_gate_to_ket(gate, ket) {
+                        GateKetResult::Ket(k) => {
+                            result_kets.push(k);
+                        }
+                        GateKetResult::Kets(mut kets) => {
+                            result_kets.append(&mut kets);
+                        }
+                        GateKetResult::NotImplemented(_) => {
+                            panic!("Gate not implemented.");
+                        }
+                    }
+                }
+
+                // Swap our ket pointers
+                cur_kets = mem::take(&mut result_kets);
+            }
+            if cur_kets.len() == 1 {
+                GateKetResult::Ket(cur_kets.pop().unwrap())
+            } else {
+                GateKetResult::Kets(cur_kets)
+            }
+        }
     }
 }
 
@@ -180,46 +156,15 @@ pub fn apply_gate_to_state(state: State, gate: &Gate) -> State {
             GateKetResult::Ket(new_ket) => {
                 new_state.add_or_insert(new_ket);
             }
-            GateKetResult::Kets([new_ket1, new_ket2]) => {
-                new_state.add_or_insert(new_ket1);
-                new_state.add_or_insert(new_ket2);
+            GateKetResult::Kets(kets) => {
+                for ket in kets {
+                    new_state.add_or_insert(ket);
+                }
             }
             GateKetResult::NotImplemented(_) => {
                 panic!("Gate not implemented.");
             }
         }
-    }
-    new_state
-}
-
-/// Apply a composite gate to a state. This is done by applying each gate in the composite gate
-/// to the state in order.
-///
-/// # Examples
-/// ```
-/// use num::complex::Complex;
-/// use quantum_simulator::gates::gate::{apply_gate_to_state, Gate};
-/// use quantum_simulator::quantum::ket::Ket;
-/// use quantum_simulator::quantum::state::State;
-/// use bitvec::prelude::*;
-///
-/// let mut state = State::new(2);
-/// state.add_or_insert(Ket::new_zero_ket(2));
-///  let gates = vec![
-///   Gate::X { target: 0 },
-///   Gate::X { target: 1 },
-/// ];
-/// let composite_gate = CompositeGate::new(gates)
-/// let result = apply_composite_gate_to_state(state, &composite_gate);
-///
-/// let expected_ket = Ket::from_bit_vec(bitvec![1, 1], Complex::new(1.0, 0.0));
-/// let expected_state = State::from_ket_vec(&vec![expected_ket]);
-///
-/// ```
-pub fn apply_composite_gate_to_state(state: State, composite_gate: &CompositeGate) -> State {
-    let mut new_state = state;
-    for gate in composite_gate.gates.iter() {
-        new_state = apply_gate_to_state(new_state, gate);
     }
     new_state
 }
@@ -234,6 +179,16 @@ mod tests {
     /// Helper function to assert that two kets are equal.
     fn assert_ket_eq(ket1: &Ket, ket2: &Ket) {
         assert!(ket1.are_equivalent(ket2));
+    }
+
+    /// Helper function to assert if a ket is within a vector of kets.
+    fn assert_contains_ket(kets: &Vec<Ket>, contains_ket: &Ket) {
+        for ket in kets {
+            if ket.are_equivalent(contains_ket) {
+                return;
+            }
+        }
+        assert!(false);
     }
 
     /// Helper function to assert that two states are equal.
@@ -251,9 +206,9 @@ mod tests {
         let expected_ket1 = Ket::from_bit_vec(bitvec![0], Complex::new(1.0 / 2.0_f64.sqrt(), 0.0));
         let expected_ket2 = Ket::from_bit_vec(bitvec![1], Complex::new(1.0 / 2.0_f64.sqrt(), 0.0));
         match result {
-            GateKetResult::Kets([ket1, ket2]) => {
-                assert_ket_eq(&ket1, &expected_ket1);
-                assert_ket_eq(&ket2, &expected_ket2);
+            GateKetResult::Kets(kets) => {
+                assert_contains_ket(&kets, &expected_ket1);
+                assert_contains_ket(&kets, &expected_ket2);
             }
             _ => panic!("Expected two kets."),
         }
@@ -417,6 +372,26 @@ mod tests {
 
         let expected_ket = Ket::from_bit_vec(bitvec![1, 0], Complex::new(1.0, 0.0));
         let expected_state = State::from_ket_vec(&vec![expected_ket]);
+
+        assert_state_eq(&new_state, &expected_state);
+    }
+    
+    fn apply_composite_gate_to_ket() {}
+
+    #[test]
+    fn apply_composite_gate_to_state_single_ket() {
+        let mut state = State::new(2);
+        state.add_or_insert(Ket::from_bit_vec(bitvec![0, 0], Complex::new(1.0, 0.0)));
+        let gate = Gate::Composite {
+            gates: vec![Gate::X { target: 0 }, Gate::X { target: 1 }],
+        };
+
+        let new_state = apply_gate_to_state(state, &gate);
+
+        let expected_state = State::from_ket_vec(&vec![Ket::from_bit_vec(
+            bitvec![1, 1],
+            Complex::new(1.0, 0.0),
+        )]);
 
         assert_state_eq(&new_state, &expected_state);
     }
