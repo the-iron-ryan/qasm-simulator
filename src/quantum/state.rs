@@ -131,15 +131,26 @@ impl Equivalency for State {
     ///
     /// ```
     fn are_equivalent(&self, other: &Self) -> bool {
-        let are_equivalent = self.num_qubits == other.num_qubits;
+        if self.num_qubits != other.num_qubits {
+            return false;
+        }
 
         let mut our_ket_vec: Vec<&Ket> = self.kets.iter().collect();
         let mut other_ket_vec: Vec<&Ket> = other.kets.iter().collect();
 
-        let our_sorted_kets = our_ket_vec.sort_by(|a, b| a.bit_vec().cmp(&b.bit_vec()));
-        let other_sorted_kets = other_ket_vec.sort_by(|a, b| a.bit_vec().cmp(&b.bit_vec()));
+        if our_ket_vec.len() != other_ket_vec.len() {
+            return false;
+        }
 
-        are_equivalent && our_sorted_kets == other_sorted_kets
+        // Sort the kets and check if each are equivalent.
+        our_ket_vec.sort_by(|a, b| a.bit_vec().cmp(&b.bit_vec()));
+        other_ket_vec.sort_by(|a, b| a.bit_vec().cmp(&b.bit_vec()));
+        for (our_ket, other_ket) in our_ket_vec.iter().zip(other_ket_vec.iter()) {
+            if !our_ket.are_equivalent(other_ket) {
+                return false;
+            }
+        }
+        return true;
     }
 }
 

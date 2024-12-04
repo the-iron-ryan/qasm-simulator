@@ -375,8 +375,6 @@ mod tests {
 
         assert_state_eq(&new_state, &expected_state);
     }
-    
-    fn apply_composite_gate_to_ket() {}
 
     #[test]
     fn apply_composite_gate_to_state_single_ket() {
@@ -392,6 +390,27 @@ mod tests {
             bitvec![1, 1],
             Complex::new(1.0, 0.0),
         )]);
+
+        assert_state_eq(&new_state, &expected_state);
+    }
+
+    #[test]
+    fn apply_composite_gate_state_multi_ket() {
+        let mut state = State::new(2);
+        state.add_or_insert(Ket::from_bit_vec(bitvec![0, 0], Complex::new(1.0, 0.0)));
+
+        let gate = Gate::Composite {
+            gates: vec![Gate::H { target: 0 }, Gate::H { target: 1 }],
+        };
+
+        let new_state = apply_gate_to_state(state, &gate);
+
+        let expected_state = State::from_ket_vec(&vec![
+            Ket::from_bit_vec(bitvec![0, 0], Complex::new(0.5, 0.0)),
+            Ket::from_bit_vec(bitvec![0, 1], Complex::new(0.5, 0.0)),
+            Ket::from_bit_vec(bitvec![1, 0], Complex::new(0.5, 0.0)),
+            Ket::from_bit_vec(bitvec![1, 1], Complex::new(0.5, 0.0)),
+        ]);
 
         assert_state_eq(&new_state, &expected_state);
     }
