@@ -1,7 +1,3 @@
-use gates::gate::CompositeGate;
-// use crate::quantum::ket;
-// use bitvec::prelude::*;
-// use num::complex::Complex;
 use regex::Regex;
 use std::collections::HashMap;
 use std::env;
@@ -10,8 +6,10 @@ use std::io::{self, BufRead};
 use std::time::Instant;
 
 pub mod gates;
+pub mod parsing;
 pub mod quantum;
 
+use parsing::parse_gate_line;
 use quantum_simulator::gates::gate::{apply_gate_to_state, Gate};
 use quantum_simulator::quantum::ket::Ket;
 use quantum_simulator::quantum::register::Register;
@@ -65,7 +63,7 @@ fn main() -> io::Result<()> {
     let register_re = Regex::new(r"(qreg|creg)\s([\w]+)(?:\[(\d+)\])").unwrap();
     let mut classical_register: Option<Register> = Option::None;
     let mut quantum_register: Option<Register> = Option::None;
-    for line_result in &mut reader_lines {
+    while let Some(line_result) = reader_lines.next() {
         line_number += 1;
         match line_result {
             Ok(line) => {
@@ -110,23 +108,19 @@ fn main() -> io::Result<()> {
     }
 
     // Parse any custom gates.
-    let mut custom_gate_map: HashMap<String, CompositeGate> = HashMap::new();
+    let mut custom_gate_map: HashMap<String, Gate> = HashMap::new();
     let gate_start_re = Regex::new(r"(?m)^gate\s+(\w+)\s+([^{]*)\s*\{").unwrap();
     let gate_end_re = Regex::new(r"}").unwrap();
     let mut is_parsing_gate = false;
     let mut current_gate_name = String::new();
-    while let Some(line_result) = reader_lines.peek() {
+    for line_result in &mut reader_lines {
+        line_number += 1;
         match line_result {
             Ok(line) => {
                 if is_parsing_gate {
-                    // Advance to the next line.
-                    reader_lines.next();
-                    line_number += 1;
-                } else if gate_start_re.is_match(line) {
-                    // Advance to the next line.
-                    reader_lines.next();
-                    line_number += 1;
-
+                    // Do gate parsing....
+                } else if gate_start_re.is_match(&line) {
+                    // Check if we can parse the gate.
                     if let Some(caps) = gate_start_re.captures(&line) {
                         current_gate_name = caps[1].to_string();
                         is_parsing_gate = true;
@@ -136,11 +130,8 @@ fn main() -> io::Result<()> {
                             format!["Could not parse gate on line {line_number}"],
                         ));
                     }
-                } else if gate_end_re.is_match(line) {
-                    // Advance to the next line.
-                    reader_lines.next();
-                    line_number += 1;
-
+                } else if gate_end_re.is_match(&line) {
+                    // End of gate parsing...
                     is_parsing_gate = false;
                 } else {
                     // We're done parsing gates.
@@ -261,41 +252,4 @@ fn main() -> io::Result<()> {
     println!("Execution time: {:?}\n", duration);
 
     Ok(())
-}
-
-
-enum GateLineResult {
-    SingleTarget { gate_name: String, target: usize },
-    MultiTarget { gate_name: String, targets: Vec<usize>}
-}
-fn parse_gate_line(line: &str) -> GateLineResult {
-    let registers: Vec<usize> = Vec::new();
-    let get_name_re = Regex::new(r"^\w+").unwrap();
-    let gate_name = get_name_re.find(&line).unwrap().as_str().to_string();
-
-    let gate_register_re = Regex::new(r"q\[*(\d+)\]*").unwrap();
-    for (_, [index]) in gate_register_re
-        .captures_iter(&line)
-        .map(|cap| cap.extract())
-    {
-        registers.push(index.parse().unwrap());
-    }
-
-    gate_name, registers
-}
-
-enum GateResult {
-    Gate {Gate},
-    CompositeGate {CompositeGate}
-}
-fn build_gate_from_line_result(line_result: GateLineResult) -> GateResult {
-    match line_result {
-        GateLineResult::SingleTarget { gate_name, target } => {
-            
-        }
-        GateLineResult::MultiTarget { gate_name, targets } => {
-
-        }
-    }
-
 }
