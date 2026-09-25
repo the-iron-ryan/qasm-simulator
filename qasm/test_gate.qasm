@@ -11,3 +11,4 @@ gate OTHER ALLQUBITS {
 h q[0];
 cx q[0],q[1];
 h q[0];
+ctrl @ OTHER q1161,  ALLQUBITS;

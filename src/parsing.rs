@@ -18,6 +18,7 @@ pub enum GateLineResult {
         target: usize,
     },
 }
+#[derive(Debug, PartialEq)]
 pub enum GateLineError {
     ParsingError { message: String },
 }
@@ -140,43 +141,43 @@ mod tests {
         let result = parse_gate_line(line);
         assert_eq!(
             result,
-            GateLineResult::SingleTarget {
+            Ok(GateLineResult::SingleTarget {
                 gate_name: String::from("h"),
                 target: 5
-            }
+            })
         );
 
         let line = "cx q0, q1";
         let result = parse_gate_line(line);
         assert_eq!(
             result,
-            GateLineResult::SingleControl {
+            Ok(GateLineResult::SingleControl {
                 gate_name: String::from("cx"),
                 control: 0,
                 target: 1
-            }
+            })
         );
 
         let line = "x ctrl @ q[0], q[1]";
         let result = parse_gate_line(line);
         assert_eq!(
             result,
-            GateLineResult::SingleControl {
+            Ok(GateLineResult::SingleControl {
                 gate_name: String::from("x"),
                 control: 0,
                 target: 1
-            }
+            })
         );
 
         let line = "x ctrl @ ctrl @ q[0], q[1], q[2]";
         let result = parse_gate_line(line);
         assert_eq!(
             result,
-            GateLineResult::MultiControl {
+            Ok(GateLineResult::MultiControl {
                 gate_name: String::from("x"),
                 controls: vec![0, 1],
                 target: 2
-            }
+            })
         );
     }
 }
